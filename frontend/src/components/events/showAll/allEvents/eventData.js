@@ -1,0 +1,98 @@
+export const eventData = [
+  {
+    id: 1,
+    title: "Annual Tech Summit 2025",
+    image: "/images/tech-summit.jpg",
+    date: "April 15, 2025",
+    time: "9:00 AM - 6:00 PM",
+    location: "Convention Center, New York",
+    description:
+      "Join us for the biggest tech conference of the year. Network with industry leaders and discover the latest innovations in technology.",
+    category: "conference",
+    isVideo: false,
+  },
+  {
+    id: 2,
+    title: "Music Festival Weekend",
+    image: "/images/music-fest.jpg",
+    date: "May 22-24, 2025",
+    time: "12:00 PM - 11:00 PM",
+    location: "Central Park, New York",
+    description:
+      "Three days of non-stop music featuring top artists from around the world. Food, drinks, and unforgettable performances.",
+    category: "concert",
+    isVideo: false,
+  },
+  {
+    id: 3,
+    title: "Workshop: Digital Marketing Mastery",
+    image: "/images/workshop.jpg",
+    date: "April 8, 2025",
+    time: "10:00 AM - 3:00 PM",
+    location: "Business Hub, San Francisco",
+    description:
+      "Learn cutting-edge digital marketing strategies from industry experts. This hands-on workshop covers SEO, social media, and content marketing.",
+    category: "workshop",
+    isVideo: true,
+  },
+  {
+    id: 4,
+    title: "Contemporary Art Exhibition",
+    image: "/images/art-exhibition.jpg",
+    date: "April 18-30, 2025",
+    time: "10:00 AM - 8:00 PM",
+    location: "Metropolitan Gallery, Chicago",
+    description:
+      "Discover works from emerging artists pushing the boundaries of contemporary art. Guided tours available daily.",
+    category: "exhibition",
+    isVideo: false,
+  },
+  {
+    id: 5,
+    title: "Startup Networking Mixer",
+    image: "/images/networking.jpg",
+    date: "April 22, 2025",
+    time: "6:30 PM - 9:30 PM",
+    location: "Innovation Hub, Austin",
+    description:
+      "Connect with founders, investors, and entrepreneurial minds. Perfect opportunity to find partners or funding for your startup.",
+    category: "networking",
+    isVideo: false,
+  },
+  {
+    id: 6,
+    title: "Web Development Bootcamp",
+    image: "/images/web-dev.jpg",
+    date: "May 5-7, 2025",
+    time: "9:00 AM - 4:00 PM",
+    location: "Tech Campus, Seattle",
+    description:
+      "Intensive three-day bootcamp covering front-end and back-end development. Perfect for beginners and intermediate developers.",
+    category: "workshop",
+    isVideo: false,
+  },
+  {
+    id: 7,
+    title: "International Food Festival",
+    image: "/images/food-festival.jpg",
+    date: "June 12-14, 2025",
+    time: "11:00 AM - 10:00 PM",
+    location: "Waterfront Park, San Diego",
+    description:
+      "Sample cuisines from around the world. Over 50 food vendors, cooking demonstrations, and cultural performances.",
+    category: "exhibition",
+    isVideo: true,
+  },
+  {
+    id: 8,
+    title: "Business Leadership Conference",
+    image: "/images/leadership.jpg",
+    date: "May 18, 2025",
+    time: "8:30 AM - 5:00 PM",
+    location: "Grand Hotel, Boston",
+    description:
+      "Gathering of business leaders sharing insights on current challenges and future trends. Keynote speakers and panel discussions.",
+    category: "conference",
+    isVideo: false,
+  },
+]
