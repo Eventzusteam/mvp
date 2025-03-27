@@ -1,5 +1,6 @@
 import express from "express"
 import bcrypt from "bcryptjs"
+import cors from "cors"
 import jwt from "jsonwebtoken"
 import crypto from "crypto"
 import nodemailer from "nodemailer"
@@ -9,6 +10,16 @@ import Token from "../models/Token.js"
 import authMiddleware from "../middleware/authMiddleware.js"
 
 const router = express.Router()
+
+const corsOptions = {
+  origin: process.env.CLIENT_URL
+    ? [process.env.CLIENT_URL]
+    : ["http://localhost:5173"],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
+  optionsSuccessStatus: 200,
+}
 
 // Function to generate access token
 const generateAccessToken = (user) => {
@@ -97,12 +108,13 @@ router.post("/login", loginLimiter, async (req, res) => {
 })
 
 // Refresh Access Token - UPDATED to include user ID
+router.options("/refresh-token", cors(corsOptions))
 router.post("/refresh-token", async (req, res) => {
   const refreshToken = req.cookies.refreshToken
   if (!refreshToken) return res.status(401).json({ error: "Access denied" })
 
   try {
-    // Verify the refresh token
+    // Verify the refresh token with the correct secret
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET)
 
     // Check if token exists in database

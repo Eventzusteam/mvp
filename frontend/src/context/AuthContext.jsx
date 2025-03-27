@@ -1,9 +1,7 @@
 import React, { createContext, useState, useEffect } from "react"
 
-// Create the context
 export const AuthContext = createContext()
 
-// Create the provider component
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -12,49 +10,38 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        // Try to refresh the token
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000)
+
         const response = await fetch(
           `${import.meta.env.VITE_API_URL}/api/auth/refresh-token`,
           {
             method: "POST",
-            credentials: "include", // Important for cookies
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            signal: controller.signal,
           }
         )
 
+        clearTimeout(timeoutId)
+
+        if (response.status === 403 || response.status === 401) {
+          // Token is invalid or expired
+          localStorage.removeItem("accessToken")
+          setUser(null)
+          return
+        }
+
         if (!response.ok) {
-          // If refresh token request fails, clear auth state
           throw new Error("Token refresh failed")
         }
 
         const data = await response.json()
-        // Store the new access token
         localStorage.setItem("accessToken", data.accessToken)
-
-        // Get user data with proper error handling
-        try {
-          const userResponse = await fetch(
-            `${import.meta.env.VITE_API_URL}/api/auth/me`,
-            {
-              headers: {
-                Authorization: `Bearer ${data.accessToken}`,
-              },
-            }
-          )
-
-          if (!userResponse.ok) {
-            throw new Error("Failed to fetch user data")
-          }
-
-          const userData = await userResponse.json()
-          setUser(userData)
-        } catch (userError) {
-          console.error("User fetch failed:", userError)
-          localStorage.removeItem("accessToken")
-          setUser(null)
-        }
       } catch (error) {
-        console.error("Auth check failed:", error)
-        // Clear any stored data if auth check fails
+        console.error("Auth Check Error:", error)
         localStorage.removeItem("accessToken")
         setUser(null)
       } finally {
@@ -65,7 +52,7 @@ export const AuthProvider = ({ children }) => {
     checkAuthStatus()
   }, [])
 
-  // Login function
+  // Login function with improved error handling
   const login = async (email, password) => {
     try {
       const response = await fetch(
@@ -74,7 +61,7 @@ export const AuthProvider = ({ children }) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
-          credentials: "include", // Important for cookies
+          credentials: "include",
         }
       )
 
@@ -85,7 +72,6 @@ export const AuthProvider = ({ children }) => {
 
       const data = await response.json()
 
-      // Store token and user data
       localStorage.setItem("accessToken", data.accessToken)
       setUser({
         id: data.user.id,
@@ -94,28 +80,24 @@ export const AuthProvider = ({ children }) => {
       })
       return data.user
     } catch (error) {
-      console.error("Login error:", error)
+      console.error("Login error details:", {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+      })
+
+      // More specific error messaging
+      if (error.message.includes("Failed to fetch")) {
+        throw new Error(
+          "Unable to connect to server. Please check your network connection."
+        )
+      }
+
       throw error
     }
   }
 
-  // Logout function
-  const logout = async () => {
-    try {
-      await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
-        method: "POST",
-        credentials: "include", // Important for cookies
-      })
-    } catch (error) {
-      console.error("Logout error:", error)
-    } finally {
-      // Always clean up local storage and state, even if server request fails
-      localStorage.removeItem("accessToken")
-      setUser(null)
-    }
-  }
-
-  // Register function
+  // Register function with improved error handling
   const register = async (name, email, password) => {
     try {
       const response = await fetch(
@@ -135,8 +117,36 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json()
       return data
     } catch (error) {
-      console.error("Registration error:", error)
+      console.error("Registration error details:", {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+      })
+
+      // More specific error messaging
+      if (error.message.includes("Failed to fetch")) {
+        throw new Error(
+          "Unable to connect to server. Please check your network connection."
+        )
+      }
+
       throw error
+    }
+  }
+
+  // Logout function
+  const logout = async () => {
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include", // Important for cookies
+      })
+    } catch (error) {
+      console.error("Logout error:", error)
+    } finally {
+      // Always clean up local storage and state, even if server request fails
+      localStorage.removeItem("accessToken")
+      setUser(null)
     }
   }
 

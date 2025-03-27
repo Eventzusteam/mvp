@@ -35,22 +35,24 @@ app.use(limiter)
 //CORS Configuration (More Secure)
 const allowedOrigins = process.env.CLIENT_URL
   ? [process.env.CLIENT_URL]
-  : ["http://localhost:3000", "http://localhost:5173"]
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true)
-      } else {
-        console.error(`Blocked by CORS: ${origin}`)
-        callback(new Error("CORS not allowed"))
-      }
-    },
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  })
-)
+  : ["http://localhost:5173"]
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      console.error(`Blocked by CORS: ${origin}`)
+      callback(new Error("CORS not allowed"))
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
+  optionsSuccessStatus: 200,
+}
+
+app.use(cors(corsOptions))
 
 app.use(express.json())
 app.use(cookieParser())
@@ -69,6 +71,20 @@ app.use((err, req, res, next) => {
   })
 })
 
-//Server Listening
 const PORT = process.env.PORT || 5000
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`))
+
+//Server Listening
+try {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`)
+    console.log(`Database Connection: ${process.env.MONGO_URI}`)
+  })
+} catch (error) {
+  console.error("Failed to start server:", error)
+  process.exit(1)
+}
+
+// Add global error handler
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason)
+})
