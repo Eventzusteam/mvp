@@ -63,6 +63,15 @@ app.use("/api/auth", authRoutes)
 app.use("/api/events", eventRoutes)
 app.use("/api/contact", contactRoutes)
 
+// New Testing Route
+app.get("/api/test", (req, res) => {
+  res.status(200).json({
+    message: "Server is up and running!",
+    timestamp: new Date().toISOString(),
+    status: "healthy",
+  })
+})
+
 //Error Handling Middleware
 app.use((err, req, res, next) => {
   console.error("Server Error:", err)
