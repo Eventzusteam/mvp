@@ -48,14 +48,11 @@ const isProduction = process.env.NODE_ENV === "production"
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests without an origin (like Postman) ONLY in non-production
-    if (!origin && !isProduction) {
-      console.log("Allowing request without origin (non-production)")
-      return callback(null, true)
-    }
-    // Check if the origin is in the allowed list
-    if (origin && allowedOrigins.includes(origin)) {
-      console.log(`Allowing CORS for origin: ${origin}`)
+    // Allow requests without an origin (like Postman/curl) OR if the origin is in the allowed list.
+    // Browsers might send 'null' for direct access, which !origin doesn't catch.
+    // Explicitly allow if origin is undefined/null OR in the allowed list.
+    if (!origin || allowedOrigins.includes(origin)) {
+      console.log(`Allowing CORS for origin: ${origin || 'undefined/null'}`)
       return callback(null, true)
     } else {
       console.error(
