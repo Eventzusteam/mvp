@@ -36,35 +36,48 @@ const limiter = rateLimit({
 })
 app.use(limiter)
 
-//CORS Configuration (More Secure)
-const allowedOrigins = process.env.CLIENT_URL
-  ? process.env.CLIENT_URL.split(",") // Allow multiple origins separated by comma
+// CORS Configuration (More Secure & Explicit)
+const clientUrl = process.env.CLIENT_URL
+const allowedOrigins = clientUrl
+  ? clientUrl.split(",").map((url) => url.trim()) // Trim whitespace
   : ["http://localhost:5173"]
+
+console.log("Allowed Origins for CORS:", allowedOrigins) // Log allowed origins on startup
 
 const isProduction = process.env.NODE_ENV === "production"
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests without an origin (like Postman) in non-production
-    // Allow origins specified in the allowedOrigins array
-    if (
-      (!origin && !isProduction) ||
-      (origin && allowedOrigins.includes(origin))
-    ) {
-      callback(null, true)
+    // Allow requests without an origin (like Postman) ONLY in non-production
+    if (!origin && !isProduction) {
+      console.log("Allowing request without origin (non-production)")
+      return callback(null, true)
+    }
+    // Check if the origin is in the allowed list
+    if (origin && allowedOrigins.includes(origin)) {
+      console.log(`Allowing CORS for origin: ${origin}`)
+      return callback(null, true)
     } else {
-      console.error(`Blocked by CORS: ${origin}`)
-      callback(new Error("CORS not allowed"))
+      console.error(
+        `Blocked by CORS: Origin '${origin}' not in allowed list: [${allowedOrigins.join(
+          ", "
+        )}]`
+      )
+      return callback(new Error("Not allowed by CORS"))
     }
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "Cookie", "x-csrf-token"],
-  optionsSuccessStatus: 200,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Ensure OPTIONS is present
+  allowedHeaders: ["Content-Type", "Authorization", "Cookie", "x-csrf-token"], // Ensure necessary headers are allowed
+  optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
 }
 
-app.use(cookieParser()) // Moved before CORS
-app.use(cors(corsOptions))
+// Handle OPTIONS requests explicitly for preflight checks
+// The 'cors' middleware usually handles this, but being explicit can sometimes help.
+app.options("*", cors(corsOptions)) // Enable preflight across-the-board
+
+app.use(cookieParser()) // Needs to be before CORS if credentials are used
+app.use(cors(corsOptions)) // Apply CORS settings to other requests
 
 app.use(express.json())
 
