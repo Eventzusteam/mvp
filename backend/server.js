@@ -12,6 +12,10 @@ import connectDB from "./config/db.js"
 import authRoutes from "./routes/authRoutes.js"
 import eventRoutes from "./routes/eventRoutes.js"
 import contactRoutes from "./routes/contactRoutes.js"
+import {
+  csrfProtection,
+  validateCsrfToken,
+} from "./middleware/csrfMiddleware.js"
 
 dotenv.config()
 connectDB()
@@ -34,12 +38,19 @@ app.use(limiter)
 
 //CORS Configuration (More Secure)
 const allowedOrigins = process.env.CLIENT_URL
-  ? [process.env.CLIENT_URL]
+  ? process.env.CLIENT_URL.split(",") // Allow multiple origins separated by comma
   : ["http://localhost:5173"]
+
+const isProduction = process.env.NODE_ENV === "production"
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow requests without an origin (like Postman) in non-production
+    // Allow origins specified in the allowedOrigins array
+    if (
+      (!origin && !isProduction) ||
+      (origin && allowedOrigins.includes(origin))
+    ) {
       callback(null, true)
     } else {
       console.error(`Blocked by CORS: ${origin}`)
@@ -48,15 +59,24 @@ const corsOptions = {
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
+  allowedHeaders: ["Content-Type", "Authorization", "Cookie", "x-csrf-token"],
   optionsSuccessStatus: 200,
 }
 
+app.use(cookieParser()) // Moved before CORS
 app.use(cors(corsOptions))
 
 app.use(express.json())
-app.use(cookieParser())
+
+// Debug: Log cookies after parsing
+app.use((req, res, next) => {
+  // console.log(`[Cookie Parser Debug] Path: ${req.path}, Cookies:`, req.cookies) // Removed log
+  next()
+})
 app.use(morgan("dev"))
+
+// CSRF Protection will be applied selectively in routes
+// app.use(csrfProtection) // Removed global application
 
 //Routes
 app.use("/api/auth", authRoutes)
@@ -86,7 +106,7 @@ const PORT = process.env.PORT || 5000
 try {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`)
-    console.log(`Database Connection: ${process.env.MONGO_URI}`)
+    // console.log(`Database Connection: ${process.env.MONGO_URI}`) // Removed potentially sensitive log
   })
 } catch (error) {
   console.error("Failed to start server:", error)

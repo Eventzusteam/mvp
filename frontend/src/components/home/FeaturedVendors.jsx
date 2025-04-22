@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import {
   ChevronLeft,
   ChevronRight,
@@ -95,10 +95,31 @@ export default function FeaturedVendors() {
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const carousel = useRef()
+  const [windowWidth, setWindowWidth] = useState(0)
 
-  // Fixed to always show 4 items
-  const itemsToShow = 4
+  // Determine items to show based on screen size
+  const getItemsToShow = () => {
+    if (windowWidth < 640) return 1 // Mobile
+    if (windowWidth < 768) return 2 // Small tablets
+    if (windowWidth < 1024) return 3 // Tablets
+    return 4 // Desktop
+  }
+
+  const itemsToShow = getItemsToShow()
   const totalVendors = vendors.length
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth)
+    }
+
+    // Set initial width
+    handleResize()
+
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
 
   const nextSlide = () => {
     setCurrentIndex((prevIndex) => (prevIndex + 1) % totalVendors)
@@ -127,33 +148,34 @@ export default function FeaturedVendors() {
         {[...Array(5)].map((_, i) => (
           <Star
             key={i}
-            size={16}
-            className={
+            size={14}
+            className={`md:w-4 md:h-4 ${
               i < Math.floor(rating)
                 ? "text-yellow-500 fill-yellow-500"
                 : "text-gray-300"
-            }
+            }`}
           />
         ))}
-        <span className="ml-1 text-sm text-gray-600">{rating}</span>
+        <span className="ml-1 text-xs md:text-sm text-gray-600">{rating}</span>
       </div>
     )
   }
 
   return (
-    <section className="py-16 px-4 bg-blue-50">
-      <div className="featured-vendors-wrapper rounded-2xl p-8">
+    <section className="py-8 md:py-16 px-4 bg-blue-50">
+      <div className="featured-vendors-wrapper rounded-lg md:rounded-2xl p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-blue-900">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-8 gap-4">
+            <h2 className="text-2xl md:text-3xl font-bold text-blue-900">
               Featured Vendors
             </h2>
             <motion.button
-              className="flex items-center text-blue-600 hover:text-white hover:bg-blue-600 transition-colors font-medium px-4 py-2 border border-blue-600 rounded-lg"
+              className="flex items-center text-blue-600 hover:text-white hover:bg-blue-600 transition-colors font-medium px-3 py-1 md:px-4 md:py-2 border border-blue-600 rounded-lg text-sm md:text-base"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              Register With Us <ArrowRight className="ml-2 w-5 h-5" />
+              Register With Us{" "}
+              <ArrowRight className="ml-1 md:ml-2 w-4 h-4 md:w-5 md:h-5" />
             </motion.button>
           </div>
 
@@ -162,12 +184,12 @@ export default function FeaturedVendors() {
               {/* Left navigation button */}
               <motion.button
                 onClick={prevSlide}
-                className="absolute left-0 top-1/2 -translate-y-1/2 -ml-4 z-10 p-2 rounded-full bg-white shadow-md hover:bg-blue-100 transition-colors"
+                className="absolute left-0 top-1/2 -translate-y-1/2 -ml-2 md:-ml-4 z-10 p-1 md:p-2 rounded-full bg-white shadow-md hover:bg-blue-100 transition-colors"
                 aria-label="Previous vendors"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <ChevronLeft className="w-6 h-6 text-blue-700" />
+                <ChevronLeft className="w-4 h-4 md:w-6 md:h-6 text-blue-700" />
               </motion.button>
 
               {/* Carousel container */}
@@ -179,47 +201,58 @@ export default function FeaturedVendors() {
                   {getVisibleItems().map((vendor) => (
                     <motion.div
                       key={vendor.id}
-                      className="w-1/4 px-2"
+                      className={`px-2 ${
+                        itemsToShow === 1
+                          ? "w-full"
+                          : itemsToShow === 2
+                          ? "w-1/2"
+                          : itemsToShow === 3
+                          ? "w-1/3"
+                          : "w-1/4"
+                      }`}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3 }}
                     >
                       <div
                         className="bg-white rounded-lg shadow-md overflow-hidden h-full flex flex-col cursor-pointer hover:shadow-lg transition-all border border-gray-100"
-                        style={{ height: "400px" }} // Matching the events section height
+                        style={{ minHeight: "320px", height: "auto" }}
                       >
                         <div className="relative">
                           <img
                             src={vendor.image}
                             alt={vendor.name}
-                            className="w-full h-48 object-cover"
+                            className="w-full h-36 md:h-48 object-cover"
                           />
-                          <div className="absolute top-0 right-0 m-3 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                          <div className="absolute top-0 right-0 m-2 md:m-3 bg-blue-600 text-white px-2 py-1 md:px-3 rounded-full text-xs font-medium">
                             {vendor.category}
                           </div>
                         </div>
-                        <div className="p-4 flex flex-col flex-grow">
-                          <div className="flex items-center gap-2 text-sm text-blue-600 font-medium">
-                            <Store size={16} />
+                        <div className="p-3 md:p-4 flex flex-col flex-grow">
+                          <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-blue-600 font-medium">
+                            <Store
+                              size={14}
+                              className="min-w-4"
+                            />
                             {vendor.experience}
                           </div>
-                          <h3 className="text-xl font-semibold mt-1 mb-2 text-blue-900">
+                          <h3 className="text-lg md:text-xl font-semibold mt-1 mb-2 text-blue-900 line-clamp-2">
                             {vendor.name}
                           </h3>
-                          <p className="text-gray-600 text-sm flex-grow">
+                          <p className="text-gray-600 text-xs md:text-sm flex-grow line-clamp-3">
                             {vendor.description}
                           </p>
-                          <div className="mt-3">
+                          <div className="mt-2 md:mt-3">
                             {renderRating(vendor.rating)}
                           </div>
-                          <div className="mt-3 pt-3 border-t border-gray-100">
+                          <div className="mt-2 md:mt-3 pt-2 md:pt-3 border-t border-gray-100">
                             <motion.button
-                              className="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center"
+                              className="text-blue-600 hover:text-blue-800 font-medium text-xs md:text-sm flex items-center"
                               whileHover={{ x: 5 }}
                             >
                               Visit Vendor{" "}
                               <ArrowRight
-                                size={16}
+                                size={14}
                                 className="ml-1"
                               />
                             </motion.button>
@@ -234,24 +267,43 @@ export default function FeaturedVendors() {
               {/* Right navigation button */}
               <motion.button
                 onClick={nextSlide}
-                className="absolute right-0 top-1/2 -translate-y-1/2 -mr-4 z-10 p-2 rounded-full bg-white shadow-md hover:bg-blue-100 transition-colors"
+                className="absolute right-0 top-1/2 -translate-y-1/2 -mr-2 md:-mr-4 z-10 p-1 md:p-2 rounded-full bg-white shadow-md hover:bg-blue-100 transition-colors"
                 aria-label="Next vendors"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <ChevronRight className="w-6 h-6 text-blue-700" />
+                <ChevronRight className="w-4 h-4 md:w-6 md:h-6 text-blue-700" />
               </motion.button>
+            </div>
+
+            {/* Pagination indicators for mobile */}
+            <div className="flex justify-center mt-4 gap-1.5 md:hidden">
+              {Array.from({ length: Math.min(8, totalVendors) }).map(
+                (_, idx) => (
+                  <button
+                    key={idx}
+                    className={`h-1.5 rounded-full transition-all ${
+                      idx === currentIndex % totalVendors
+                        ? "w-4 bg-blue-600"
+                        : "w-1.5 bg-gray-300"
+                    }`}
+                    onClick={() => setCurrentIndex(idx)}
+                    aria-label={`Go to slide ${idx + 1}`}
+                  />
+                )
+              )}
             </div>
           </div>
 
-          {/* View All Vendors button at the bottom right corner */}
-          <div className="flex justify-end mt-6">
+          {/* View All Vendors button at the bottom, centered on mobile, right on desktop */}
+          <div className="flex justify-center sm:justify-end mt-6">
             <motion.button
-              className="flex items-center text-blue-600 hover:text-white hover:bg-blue-600 transition-colors font-medium px-4 py-2 border border-blue-600 rounded-lg"
+              className="flex items-center text-blue-600 hover:text-white hover:bg-blue-600 transition-colors font-medium px-3 py-1 md:px-4 md:py-2 border border-blue-600 rounded-lg text-sm md:text-base"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              Learn About Our Services <ArrowRight className="ml-2 w-5 h-5" />
+              Learn About Our Services{" "}
+              <ArrowRight className="ml-1 md:ml-2 w-4 h-4 md:w-5 md:h-5" />
             </motion.button>
           </div>
         </div>

@@ -4,6 +4,7 @@ import Navbar from "./components/layout/Navbar"
 import SignIn from "./components/sign-in/SignIn"
 import SignUp from "./components/sing-up/SignUp"
 import ForgotPassword from "./components/forgot-password/ForgotPassword"
+import ResetPassword from "./components/reset-password/ResetPassword"
 import HomePage from "./pages/HomePage"
 import ContactPage from "./pages/ContactPage"
 import AllEventsPage from "./pages/AllEventsPage"
@@ -21,9 +22,12 @@ const AppLayout = () => {
   const location = useLocation()
 
   // Check if current route is an auth page
-  const isAuthPage = ["/signin", "/signup", "/forgot-password"].includes(
-    location.pathname
-  )
+  const isAuthPage = [
+    "/signin",
+    "/signup",
+    "/forgot-password",
+    "/reset-password",
+  ].includes(location.pathname)
 
   return (
     <>
@@ -44,6 +48,10 @@ const AppLayout = () => {
         <Route
           path="/forgot-password"
           element={<ForgotPassword />}
+        />
+        <Route
+          path="/reset-password/:token"
+          element={<ResetPassword />}
         />
         <Route
           path="/contact"

@@ -2,11 +2,11 @@ import React, { useState, useEffect, useContext } from "react"
 import { motion } from "framer-motion"
 import EventCard from "./EventCard"
 // import ListEventCard from "./ListEventCard"
-// import FilterBar from "./FilterBar"
+import FilterBar from "./FilterBar"
 import LayoutControls from "./LayoutControls"
 import Pagination from "./Pagination"
 import axios from "axios"
-import { AuthContext } from "../../../../context/AuthContext"
+import { AuthContext } from "../../../../context/AuthContextDefinition.js"
 
 const AllEvents = () => {
   const [events, setEvents] = useState([])
@@ -126,10 +126,10 @@ const AllEvents = () => {
           transition={{ duration: 0.5 }}
           className="w-full px-4 md:px-6 lg:px-8 py-8 bg-white rounded-lg shadow-md"
         >
-          {/* <FilterBar
+          <FilterBar
             filter={filter}
             onFilterChange={handleFilterChange}
-          /> */}
+          />
 
           {loading ? (
             <div className="flex justify-center items-center h-64">

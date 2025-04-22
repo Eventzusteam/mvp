@@ -1,8 +1,8 @@
-import React, { useContext, useState } from "react"
+import React, { useContext, useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Eye, EyeOff, Mail, Lock, LogIn } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
-import { AuthContext } from "../../context/AuthContext"
+import { AuthContext } from "../../context/AuthContextDefinition.js"
 
 const SignIn = () => {
   const [email, setEmail] = useState("")
@@ -13,6 +13,12 @@ const SignIn = () => {
   const navigate = useNavigate()
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/") // Redirect if already logged in
+    }
+  }, [isAuthenticated, navigate])
 
   const handleSubmit = async (e) => {
     e.preventDefault()

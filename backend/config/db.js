@@ -9,7 +9,7 @@ const connectDB = async (retries = 5) => {
       maxPoolSize: 10, // Optimize connection pooling
     })
 
-    console.log("MongoDB connected")
+    console.log("MongoDB connected successfully")
   } catch (error) {
     console.error("Database connection error:", error)
 
@@ -18,7 +18,8 @@ const connectDB = async (retries = 5) => {
       process.exit(1) // Stops the app if DB connection fails
     }
 
-    console.log(
+    console.error(
+      // Changed to console.error for actual errors
       `Retrying database connection in 5 seconds... (${retries} retries left)`
     )
     setTimeout(() => connectDB(retries - 1), 5000) // Retry after 5 seconds

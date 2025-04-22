@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { motion } from "framer-motion"
 import { Check, AlertCircle, RefreshCw, Send, Image } from "lucide-react"
 import { useContext } from "react"
-import { AuthContext } from "../../../../context/AuthContext"
+import { AuthContext } from "../../../../context/AuthContextDefinition.js"
 
 const FormSubmit = ({ formData, bannerImage }) => {
   const [submissionState, setSubmissionState] = useState("initial") // initial, submitting, success, error
@@ -161,9 +161,6 @@ const FormSubmit = ({ formData, bannerImage }) => {
       return
     }
 
-    // Log the banner image to verify it exists
-    console.log("Banner image before submission:", bannerImage)
-
     // Form validation
     const validation = validateForm()
     if (!validation.valid) {
@@ -174,6 +171,9 @@ const FormSubmit = ({ formData, bannerImage }) => {
     setSubmissionState("submitting")
 
     try {
+      // Import the API utility
+      const { eventApi } = await import("../../../../utils/api.js")
+
       // Create a clean copy of form data for submission
       const cleanFormData = { ...formData }
 
@@ -184,15 +184,47 @@ const FormSubmit = ({ formData, bannerImage }) => {
         }
       })
 
-      // Add the banner image URL explicitly
+      // Add the banner image explicitly
       cleanFormData.bannerImage = bannerImage
 
       // Prepare the form data for submission
       const eventFormData = new FormData()
 
-      // Add all the data as JSON except for file fields
+      // Process banner image first if it's base64 to ensure it's properly handled before form submission
+      const processBannerImage = async () => {
+        if (cleanFormData.bannerImage) {
+          const value = cleanFormData.bannerImage
+          if (value instanceof File || value instanceof Blob) {
+            eventFormData.append("bannerImage", value, "banner.jpg")
+            return
+          } else if (typeof value === "string" && value.startsWith("data:")) {
+            try {
+              // Convert base64 to blob and append - using await to ensure it completes
+              const response = await fetch(value)
+              const blob = await response.blob()
+              eventFormData.append("bannerImage", blob, "banner.jpg")
+            } catch (err) {
+              console.error("Error converting base64 to blob:", err)
+              // Still append the original value as fallback
+              eventFormData.append("bannerImage", value)
+            }
+          } else {
+            // It's a URL, just add it as is
+            eventFormData.append("bannerImage", value)
+          }
+        }
+      }
+
+      // Process banner image first
+      await processBannerImage()
+
+      // Add all the data as JSON except for file fields and banner image (already processed)
       Object.entries(cleanFormData).forEach(([key, value]) => {
-        if (key !== "images" && key !== "galleryImages") {
+        if (
+          key !== "images" &&
+          key !== "galleryImages" &&
+          key !== "bannerImage"
+        ) {
           if (
             typeof value === "object" &&
             !(value instanceof File) &&
@@ -211,41 +243,38 @@ const FormSubmit = ({ formData, bannerImage }) => {
         cleanFormData.galleryImages.length > 0
       ) {
         cleanFormData.galleryImages.forEach((img, index) => {
-          eventFormData.append(`galleryImage_${index}`, img)
+          // Check if the image is a string (URL) or a File/Blob
+          if (img instanceof File || img instanceof Blob) {
+            eventFormData.append(`galleryImage_${index}`, img)
+          } else if (typeof img === "string" && img.startsWith("data:")) {
+            // Convert base64 to blob and append
+            fetch(img)
+              .then((res) => res.blob())
+              .then((blob) => {
+                eventFormData.append(
+                  `galleryImage_${index}`,
+                  blob,
+                  `image_${index}.jpg`
+                )
+              })
+              .catch((err) =>
+                console.error("Error converting base64 to blob:", err)
+              )
+          } else {
+            // It's a URL, just add it as is
+            eventFormData.append(`galleryImage_${index}`, img)
+          }
         })
       }
 
-      console.log("Submitting event with banner image:", bannerImage)
-      console.log(
-        "Form data contains bannerImage:",
-        eventFormData.has("bannerImage")
-      )
-      console.log("bannerImage value:", eventFormData.get("bannerImage"))
-
-      // Make sure the API URL exists
-      const apiUrl = import.meta.env.VITE_API_URL
-      if (!apiUrl) {
-        throw new Error("API URL configuration is missing")
-      }
-
       // Get authentication headers
-      const authHeader = getAuthHeader()
+      const authHeaders = getAuthHeader()
 
-      // Remove Content-Type header - let FormData set it with boundary
-      const headers = { ...authHeader }
-
-      const response = await fetch(`${apiUrl}/api/events/create`, {
-        method: "POST",
-        headers: headers,
-        body: eventFormData,
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || `Server returned ${response.status}`)
-      }
-
-      const responseData = await response.json()
+      // Use the API utility to create the event with auth headers
+      const responseData = await eventApi.createEvent(
+        eventFormData,
+        authHeaders
+      )
       console.log("Response from server:", responseData)
 
       setSubmissionState("success")

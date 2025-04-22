@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
-import { AuthContext } from "../../../context/AuthContext"
+import { AuthContext } from "../../../context/AuthContextDefinition"
 import EventHeader from "./EventHeader"
 import EventDescription from "./EventDescription"
 import EventInformation from "./EventInformation"

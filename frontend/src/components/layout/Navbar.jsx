@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import {
-  Phone,
+  Phone, // Re-add Phone icon import
   Menu,
   X,
   Calendar,
@@ -14,7 +14,7 @@ import {
   ChevronDown,
   Search,
 } from "lucide-react"
-import { AuthContext } from "../../context/AuthContext"
+import { AuthContext } from "../../context/AuthContextDefinition.js"
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -42,8 +42,8 @@ const Navbar = () => {
     }
   }
 
-  // Enhanced menu items with icons for better visual identity
-  const menuItems = [
+  // Base menu items (always visible or conditionally shown based on context, but not auth)
+  const baseMenuItems = [
     {
       id: 1,
       title: "Create Event",
@@ -57,36 +57,32 @@ const Navbar = () => {
       icon: <Users size={18} />,
     },
     {
-      id: 3,
+      id: 3, // Adjust ID if needed
+      title: "Contact", // Add Contact item
+      path: "/contact", // Add path for Contact
+      icon: <Phone size={18} />, // Add Phone icon
+    },
+    {
+      id: 4, // Adjust ID
       title: "FAQ",
       path: "/faq",
       icon: <HelpCircle size={18} />,
     },
   ]
 
-  // Add Sign In item only if not logged in
-  if (!isAuthenticated) {
-    menuItems.push({
-      id: 4,
-      title: "Sign In",
-      path: "/signin",
-      icon: <LogIn size={18} />,
-    })
-  }
-
   // User dropdown menu items (only shown when logged in)
   const userDropdownItems = [
     {
       id: 1,
-      title: "Create Event",
-      path: "/events/create",
-      icon: <Calendar size={16} />,
+      title: "My Dashboard",
+      path: "/organizer/events", // Correct path for dashboard
+      icon: <User size={16} />, // Use User icon for dashboard
     },
     {
       id: 2,
-      title: isAuthenticated && user ? "My Dashboard" : "Browse Events",
-      path: isAuthenticated && user ? "/organizer/events" : "/events",
-      icon: <Users size={16} />,
+      title: "Create Event",
+      path: "/events/create",
+      icon: <Calendar size={16} />,
     },
     {
       id: 3,
@@ -195,7 +191,8 @@ const Navbar = () => {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-8">
-            {menuItems.map((item) => (
+            {/* Base Menu Items */}
+            {baseMenuItems.map((item) => (
               <Link
                 key={item.id}
                 to={item.path}
@@ -213,8 +210,8 @@ const Navbar = () => {
               </Link>
             ))}
 
-            {/* User profile dropdown if logged in */}
-            {isAuthenticated && user && (
+            {/* Auth Section */}
+            {isAuthenticated && user ? (
               <div className="relative">
                 <button
                   onClick={toggleUserMenu}
@@ -223,75 +220,76 @@ const Navbar = () => {
                       ? "text-white hover:text-blue-600"
                       : "text-white hover:text-blue-600"
                   }`}
-                  aria-label="User menu"
                 >
-                  <User size={20} />
-                  <span className="text-white">{user.name}</span>
-                  {/* <ChevronDown size={16} /> */}
+                  <User size={18} />
+                  <span>{user.name || user.email}</span>{" "}
+                  {/* Display user name or email */}
+                  <ChevronDown
+                    size={16}
+                    className={`transition-transform ${
+                      isUserMenuOpen ? "rotate-180" : ""
+                    }`}
+                  />
                 </button>
-
-                {/* User dropdown menu */}
                 <AnimatePresence>
                   {isUserMenuOpen && (
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50"
-                      onClick={(e) => e.stopPropagation()}
+                      className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-700"
+                      onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
                     >
-                      {userDropdownItems.map((item) => (
-                        <div key={item.id}>
-                          {item.action ? (
-                            <button
-                              onClick={item.action}
-                              className="w-full text-left px-4 py-2 text-gray-800 hover:bg-blue-50 flex items-center gap-2"
-                            >
-                              {item.icon}
-                              {item.title}
-                            </button>
-                          ) : (
-                            <Link
-                              to={item.path}
-                              className="block px-4 py-2 text-gray-800 hover:bg-blue-50 flex items-center gap-2"
-                              onClick={handleLinkClick}
-                            >
-                              {item.icon}
-                              {item.title}
-                            </Link>
-                          )}
-                        </div>
-                      ))}
+                      {userDropdownItems.map((item) =>
+                        item.action ? (
+                          <button
+                            key={item.id}
+                            onClick={() => {
+                              item.action()
+                              handleLinkClick() // Close menu after action
+                            }}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white gap-2"
+                          >
+                            {item.icon}
+                            {item.title}
+                          </button>
+                        ) : (
+                          <Link
+                            key={item.id}
+                            to={item.path}
+                            className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white gap-2"
+                            onClick={handleLinkClick}
+                          >
+                            {item.icon}
+                            {item.title}
+                          </Link>
+                        )
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
+            ) : (
+              <Link
+                to="/signin"
+                className={`flex items-center gap-2 font-medium transition-colors duration-200 ${
+                  scrolled
+                    ? "text-white hover:text-blue-600"
+                    : "text-white hover:text-blue-600"
+                }`}
+                onClick={handleLinkClick}
+              >
+                <LogIn size={18} />
+                Sign In
+              </Link>
             )}
-
-            {/* Phone icon for contact with clickable link */}
-            <Link
-              to="/contact"
-              className={`transition-colors duration-200 p-2 rounded-full ${
-                location.pathname === "/contact" ? "bg-blue-700 " : ""
-              }${
-                scrolled
-                  ? "text-white hover:text-blue-800 hover:bg-blue-100"
-                  : "text-white hover:text-blue-800 hover:bg-blue-100"
-              }`}
-              onClick={handleLinkClick}
-              aria-label="Contact"
-            >
-              <Phone size={20} />
-            </Link>
           </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden">
             <button
-              className={scrolled ? "text-white" : "text-white"}
               onClick={() => setIsOpen(!isOpen)}
-              aria-label="Toggle menu"
+              className="text-white focus:outline-none"
             >
               {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -299,23 +297,22 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile Menu - Improved version */}
+      {/* Mobile Menu */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="absolute top-full left-0 w-full bg-black shadow-lg md:hidden"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden bg-black bg-opacity-90 backdrop-blur-sm absolute top-full left-0 w-full overflow-hidden"
           >
-            <div className="flex flex-col px-4 py-3 space-y-2 border-t border-gray-800">
-              {/* Mobile Search Bar */}
-              <div className="relative mb-3">
+            <div className="container mx-auto px-4 py-4 flex flex-col space-y-4">
+              {/* Mobile Search (disabled) */}
+              <div className="relative">
                 <input
                   type="text"
                   placeholder="Search events..."
-                  className="bg-gray-900 border border-gray-700 text-white pl-10 pr-4 py-2 rounded-full w-full focus:outline-none focus:ring-1 focus:ring-blue-600 text-sm"
+                  className="bg-gray-800 border border-gray-700 text-white pl-10 pr-4 py-2 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-600 w-full text-sm transition-all cursor-not-allowed"
                   disabled
                 />
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -326,33 +323,15 @@ const Navbar = () => {
                 </div>
               </div>
 
-              {/* User profile section if logged in */}
-              {isAuthenticated && user && (
-                <div className="mb-2 py-2 border-b border-gray-800">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-blue-700 rounded-full p-1.5">
-                      <User
-                        size={18}
-                        className="text-white"
-                      />
-                    </div>
-                    <div>
-                      <div className="text-white font-medium">{user.name}</div>
-                      <div className="text-gray-400 text-sm">{user.email}</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Mobile menu items */}
-              {menuItems.map((item) => (
+              {/* Base Menu Items */}
+              {baseMenuItems.map((item) => (
                 <Link
                   key={item.id}
                   to={item.path}
-                  className={`flex items-center gap-3 py-2 text-white font-medium ${
+                  className={`flex items-center gap-3 py-2 text-white hover:text-blue-500 transition-colors duration-200 ${
                     location.pathname === item.path
-                      ? "text-blue-400"
-                      : "hover:text-blue-300"
+                      ? "font-semibold text-blue-400"
+                      : ""
                   }`}
                   onClick={handleLinkClick}
                 >
@@ -361,52 +340,68 @@ const Navbar = () => {
                 </Link>
               ))}
 
-              {/* User options in mobile when logged in */}
-              {isAuthenticated && (
-                <div className="pt-2 border-t border-gray-800">
-                  <div className="text-gray-400 text-sm mb-2">User Options</div>
-                  {userDropdownItems.map((item) =>
-                    item.action ? (
-                      <button
-                        key={item.id}
-                        onClick={item.action}
-                        className="flex items-center gap-3 py-2 w-full text-left text-white hover:text-blue-300 font-medium"
-                      >
-                        {item.icon}
-                        {item.title}
-                      </button>
-                    ) : (
-                      <Link
-                        key={item.id}
-                        to={item.path}
-                        className={`flex items-center gap-3 py-2 text-white font-medium ${
-                          location.pathname === item.path
-                            ? "text-blue-400"
-                            : "hover:text-blue-300"
-                        }`}
-                        onClick={handleLinkClick}
-                      >
-                        {item.icon}
-                        {item.title}
-                      </Link>
-                    )
+              {/* Divider */}
+              <hr className="border-gray-700 my-2" />
+
+              {/* Auth Section - Mobile */}
+              {isAuthenticated && user ? (
+                <div className="relative">
+                  <button
+                    onClick={toggleUserMenu}
+                    className="flex items-center justify-between w-full py-2 text-white hover:text-blue-500 transition-colors duration-200"
+                  >
+                    <span className="flex items-center gap-3">
+                      <User size={18} />
+                      {user.name || user.email}
+                    </span>
+                    <ChevronDown
+                      size={16}
+                      className={`transition-transform ${
+                        isUserMenuOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                  {/* Mobile User Dropdown */}
+                  {isUserMenuOpen && (
+                    <div className="pl-6 mt-1 flex flex-col space-y-2">
+                      {userDropdownItems.map((item) =>
+                        item.action ? (
+                          <button
+                            key={item.id}
+                            onClick={() => {
+                              item.action()
+                              handleLinkClick() // Close menu after action
+                            }}
+                            className="flex items-center w-full py-1 text-sm text-gray-300 hover:text-blue-400 gap-2"
+                          >
+                            {item.icon}
+                            {item.title}
+                          </button>
+                        ) : (
+                          <Link
+                            key={item.id}
+                            to={item.path}
+                            className="flex items-center py-1 text-sm text-gray-300 hover:text-blue-400 gap-2"
+                            onClick={handleLinkClick}
+                          >
+                            {item.icon}
+                            {item.title}
+                          </Link>
+                        )
+                      )}
+                    </div>
                   )}
                 </div>
+              ) : (
+                <Link
+                  to="/signin"
+                  className="flex items-center gap-3 py-2 text-white hover:text-blue-500 transition-colors duration-200"
+                  onClick={handleLinkClick}
+                >
+                  <LogIn size={18} />
+                  Sign In
+                </Link>
               )}
-
-              {/* Contact link */}
-              <Link
-                to="/contact"
-                className={`flex items-center gap-3 py-2 text-white font-medium ${
-                  location.pathname === "/contact"
-                    ? "text-blue-400"
-                    : "hover:text-blue-300"
-                }`}
-                onClick={handleLinkClick}
-              >
-                <Phone size={18} />
-                Contact Us
-              </Link>
             </div>
           </motion.div>
         )}

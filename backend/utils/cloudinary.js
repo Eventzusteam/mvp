@@ -43,41 +43,64 @@ export const upload = multer({
 // Function to upload file to Cloudinary
 export const uploadToCloudinary = async (filePath) => {
   try {
-    // Check if file exists before attempting upload
-    if (!fs.existsSync(filePath)) {
-      throw new Error(`File not found: ${filePath}`)
+    // Handle both file paths and base64 data URLs
+    const uploadOptions = {
+      folder: "event-management",
+      use_filename: true,
+      unique_filename: true,
+      overwrite: true,
+      resource_type: "auto",
     }
 
-    const result = await cloudinary.v2.uploader.upload(filePath, {
-      resource_type: "image",
-      allowed_formats: ["jpg", "png", "jpeg", "gif"],
-      folder: "events",
-      transformation: [
-        { width: 800, height: 600, crop: "fill", quality: "auto" },
-      ],
-    })
-
-    // Delete local file after successful upload
-    try {
-      fs.unlinkSync(filePath)
-    } catch (unlinkError) {
-      console.error("Failed to delete local file:", unlinkError)
-      // Continue execution even if file deletion fails
+    // If it's a base64 data URL
+    if (typeof filePath === "string" && filePath.startsWith("data:")) {
+      // console.log("Uploading base64 image to Cloudinary") // Removed log
+      const result = await cloudinary.v2.uploader.upload(
+        filePath,
+        uploadOptions
+      )
+      return result.secure_url
     }
-
-    return result.secure_url
-  } catch (error) {
-    console.error("Cloudinary upload error:", error)
-
-    // Try to clean up the file if the upload failed
-    try {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath)
+    // If it's a file path
+    else {
+      // console.log("Uploading file path to Cloudinary:", filePath) // Removed log
+      // Check if file exists before attempting upload
+      if (!fs.existsSync(filePath)) {
+        throw new Error(`File not found: ${filePath}`)
       }
-    } catch (cleanupError) {
-      console.error("Failed to clean up file after upload error:", cleanupError)
+
+      const result = await cloudinary.v2.uploader.upload(
+        filePath,
+        uploadOptions
+      )
+
+      // Delete local file after successful upload
+      try {
+        fs.unlinkSync(filePath)
+      } catch (unlinkError) {
+        console.error("Failed to delete local file:", unlinkError)
+        // Continue execution even if file deletion fails
+      }
+
+      return result.secure_url
+    }
+  } catch (error) {
+    console.error("Error uploading to Cloudinary:", error)
+
+    // Try to clean up the file if the upload failed and it's a file path
+    if (typeof filePath === "string" && !filePath.startsWith("data:")) {
+      try {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath)
+        }
+      } catch (cleanupError) {
+        console.error(
+          "Failed to clean up file after upload error:",
+          cleanupError
+        )
+      }
     }
 
-    throw new Error(`Cloudinary upload failed: ${error.message}`)
+    throw new Error("Failed to upload image")
   }
 }

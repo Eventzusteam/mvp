@@ -2,7 +2,7 @@ import React, { useContext, useState } from "react"
 import { motion } from "framer-motion"
 import { Eye, EyeOff, Mail, Lock, User, UserPlus } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
-import { AuthContext } from "../../context/AuthContext"
+import { AuthContext } from "../../context/AuthContextDefinition.js"
 
 const SignUp = () => {
   const [name, setName] = useState("")

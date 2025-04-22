@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { AuthContext } from "../../../context/AuthContext"
+import { AuthContext } from "../../../context/AuthContextDefinition"
 import { motion } from "framer-motion"
 import {
   Calendar as CalendarIcon,

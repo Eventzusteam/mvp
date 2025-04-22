@@ -112,6 +112,29 @@ const eventSchema = new mongoose.Schema(
         photo: String,
       },
     ],
+    tags: [String],
+    agenda: [
+      {
+        time: String,
+        title: String,
+        description: String,
+        speaker: String,
+      },
+    ],
+    sponsors: [
+      {
+        name: String,
+        logo: String,
+        website: String,
+        level: String,
+      },
+    ],
+    faqs: [
+      {
+        question: String,
+        answer: String,
+      },
+    ],
     organiserName: {
       type: String,
       trim: true,

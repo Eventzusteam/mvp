@@ -61,6 +61,8 @@ export default function Hero({ onImageUpload }) {
       setError(
         "Failed to upload image. Please check your connection and try again."
       )
+      setError(errorMsg)
+      toast.error(errorMsg)
     } finally {
       setIsUploading(false)
     }

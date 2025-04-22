@@ -8,6 +8,7 @@ import rateLimit from "express-rate-limit"
 import User from "../models/User.js"
 import Token from "../models/Token.js"
 import authMiddleware from "../middleware/authMiddleware.js"
+import { validateCsrfToken } from "../middleware/csrfMiddleware.js"
 
 const router = express.Router()
 
@@ -77,6 +78,39 @@ router.post("/register", async (req, res) => {
   }
 })
 
+// Get CSRF Token
+import { csrfProtection } from "../middleware/csrfMiddleware.js" // Import csrfProtection
+
+router.get("/csrf-token", csrfProtection, (req, res) => {
+  // Apply csrfProtection middleware here
+  // The csrfProtection middleware should have already generated a token
+  // and attached it via res.getToken or res.locals.csrfToken
+  // If using csurf, it might be req.csrfToken()
+  // Let's assume generateCsrfToken can be called directly if needed,
+  // or rely on the middleware attached in server.js
+
+  // Option 1: Rely on middleware attached in server.js (if it adds req.csrfToken() or similar)
+  // const token = req.csrfToken ? req.csrfToken() : null;
+
+  // Option 2: Use the generate function directly (might create inconsistencies if not careful)
+  // const token = generateCsrfToken(req, res); // This might set cookies unexpectedly
+
+  // Option 3: Access token from res.locals if set by middleware
+  const token = res.locals.csrfToken || (res.getToken ? res.getToken() : null)
+
+  if (token) {
+    res.json({ csrfToken: token })
+  } else {
+    // Fallback: Generate if not available (ensure middleware setup is correct)
+    console.error(
+      "CSRF token not found in locals/getToken after csrfProtection middleware."
+    )
+    res
+      .status(500)
+      .json({ error: "CSRF token could not be generated or retrieved." })
+  }
+})
+
 // Login User
 router.post("/login", loginLimiter, async (req, res) => {
   const { email, password } = req.body
@@ -90,28 +124,36 @@ router.post("/login", loginLimiter, async (req, res) => {
     const accessToken = generateAccessToken(user)
     const refreshToken = await generateRefreshToken(user)
 
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 Days
-    })
+    // Set the cookie
+    const isProduction = process.env.NODE_ENV === "production"
 
+    const cookieOptions = {
+      httpOnly: true,
+      secure: true, // Enforce Secure=true because SameSite=None is used
+      sameSite: "None", // Use None consistently for cross-origin
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 Days
+      path: "/", // Ensure path is root
+    }
+
+    res.cookie("refreshToken", refreshToken, cookieOptions)
+
+    // Send the response
     res.json({
       accessToken,
       user: { id: user._id, name: user.name, email: user.email },
     })
   } catch (error) {
-    console.error(error)
+    console.error("[Login] Error during login process:", error)
     res.status(500).json({ error: "Login failed" })
   }
 })
 
-// Refresh Access Token - UPDATED to include user ID
+// Refresh Access Token - UPDATED to include user ID and handle token rotation
 router.options("/refresh-token", cors(corsOptions))
-router.post("/refresh-token", async (req, res) => {
+router.post("/refresh-token", validateCsrfToken, async (req, res) => {
   const refreshToken = req.cookies.refreshToken
-  if (!refreshToken) return res.status(401).json({ error: "Access denied" })
+  if (!refreshToken)
+    return res.status(401).json({ error: "Access denied", code: "NO_TOKEN" })
 
   try {
     // Verify the refresh token with the correct secret
@@ -120,48 +162,154 @@ router.post("/refresh-token", async (req, res) => {
     // Check if token exists in database
     const tokenDoc = await Token.findOne({ token: refreshToken })
     if (!tokenDoc) {
-      return res.status(403).json({ error: "Invalid refresh token" })
+      const clearCookieOptions = {
+        httpOnly: true,
+        secure: true, // Enforce Secure=true because SameSite=None is used
+        sameSite: "None", // Use None consistently
+        path: "/",
+      }
+      // Clear the invalid cookie
+      res.clearCookie("refreshToken", clearCookieOptions)
+      console.error(
+        "[Refresh Token] Error: Token not found in DB. Sending 403."
+      )
+      return res
+        .status(403)
+        .json({ error: "Invalid refresh token", code: "INVALID_TOKEN_DB" })
     }
 
     // Get user info to include in response
     const user = await User.findById(decoded.id).select("-password")
     if (!user) {
-      return res.status(404).json({ error: "User not found" })
+      const clearCookieOptions = {
+        httpOnly: true,
+        secure: true, // Enforce Secure=true because SameSite=None is used
+        sameSite: "None", // Use None consistently
+        path: "/",
+      }
+      // Clear the invalid cookie and delete token from DB
+      await Token.deleteOne({ token: refreshToken })
+      res.clearCookie("refreshToken", clearCookieOptions)
+      console.error(
+        "[Refresh Token] Error: User associated with token not found. Sending 404."
+      )
+      return res
+        .status(404)
+        .json({ error: "User not found", code: "USER_NOT_FOUND" })
     }
 
     // Generate new access token
     const accessToken = generateAccessToken(user)
 
+    // Token rotation for better security - generate a new refresh token
+    // Delete the old refresh token
+    await Token.deleteOne({ token: refreshToken })
+
+    // Generate a new refresh token
+    const newRefreshToken = await generateRefreshToken(user)
+
+    const refreshCookieOptions = {
+      httpOnly: true,
+      secure: true, // Enforce Secure=true because SameSite=None is used
+      sameSite: "None", // Use None consistently for cross-origin
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 Days
+      path: "/",
+    }
+    // Set the new refresh token in a cookie
+    res.cookie("refreshToken", newRefreshToken, refreshCookieOptions)
+
     res.json({
       accessToken,
-      userId: decoded.id,
+      userId: decoded.id, // Keep sending userId for frontend context
+      // user: { id: user._id, name: user.name, email: user.email }, // Optionally send user details
     })
   } catch (error) {
-    console.error("Refresh token error:", error)
-    return res.status(403).json({ error: "Invalid refresh token" })
+    console.error(
+      "[Refresh Token] Error caught during token refresh process:",
+      error
+    )
+
+    const errorClearCookieOptions = {
+      httpOnly: true,
+      secure: true, // Enforce Secure=true because SameSite=None is used
+      sameSite: "None", // Consistent setting for cross-origin
+      path: "/",
+    }
+    // Clear potentially invalid/expired cookie
+    res.clearCookie("refreshToken", errorClearCookieOptions)
+    console.log(
+      "[Refresh Token] Cleared potentially invalid refresh token cookie due to caught error."
+    )
+
+    if (error.name === "TokenExpiredError") {
+      console.error("[Refresh Token] TokenExpiredError detected. Sending 401.")
+      // Clear the cookie regardless of DB deletion success
+      res.clearCookie("refreshToken", errorClearCookieOptions)
+      console.log(
+        "[Refresh Token] Cleared expired refresh token cookie (in TokenExpiredError block)."
+      )
+
+      // Attempt to delete the expired token from DB if possible (might fail if already deleted)
+      try {
+        const decodedExpired = jwt.decode(refreshToken) // Decode without verification
+        if (decodedExpired && decodedExpired.id) {
+          await Token.deleteOne({
+            userId: decodedExpired.id,
+            token: refreshToken,
+          })
+          console.log(
+            "[Refresh Token] Successfully deleted expired token entry from DB."
+          )
+        }
+      } catch (dbError) {
+        console.error(
+          "[Refresh Token] Error deleting expired token from DB:",
+          dbError.message
+        )
+      }
+      return res
+        .status(401)
+        .json({ error: "Refresh token expired", code: "REFRESH_TOKEN_EXPIRED" })
+    } else if (error.name === "JsonWebTokenError") {
+      console.error("[Refresh Token] JsonWebTokenError detected. Sending 401.")
+      return res
+        .status(401)
+        .json({ error: "Invalid refresh token", code: "INVALID_REFRESH_TOKEN" })
+    } else {
+      console.error("[Refresh Token] Generic error caught. Sending 500.")
+      return res
+        .status(500)
+        .json({ error: "Internal server error", code: "REFRESH_FAILED" })
+    }
   }
 })
 
 // Logout User - Clears refresh token from cookies & database
-router.post("/logout", async (req, res) => {
+router.post("/logout", validateCsrfToken, async (req, res) => {
   try {
     const refreshToken = req.cookies.refreshToken
-    if (!refreshToken)
+    if (!refreshToken) {
+      console.log(
+        "[Logout] No refresh token found in cookies. Already logged out or token missing."
+      )
       return res.status(200).json({ message: "Logged out successfully" })
+    }
 
     // Delete refresh token from the database
     await Token.deleteOne({ token: refreshToken })
 
-    // Clear cookie
-    res.clearCookie("refreshToken", {
+    const logoutClearCookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    })
+      secure: true, // Enforce Secure=true because SameSite=None is used
+      sameSite: "None", // Use None consistently
+      path: "/",
+    }
+    // Clear cookie
+    res.clearCookie("refreshToken", logoutClearCookieOptions)
 
     res.status(200).json({ message: "Logged out successfully" })
   } catch (error) {
-    console.error("Logout error:", error)
+    console.error("[Logout] Error during logout process:", error)
     res.status(500).json({ error: "Logout failed" })
   }
 })
@@ -249,15 +397,28 @@ router.post("/reset-password/:token", async (req, res) => {
   }
 })
 
-router.get("/me", authMiddleware, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select("-password")
-    if (!user) return res.status(404).json({ error: "User not found" })
+// router.get("/me", authMiddleware, async (req, res) => {
+//   try {
+//     const user = await User.findById(req.user.id).select("-password")
+//     if (!user) return res.status(404).json({ error: "User not found" })
 
-    res.json(user)
-  } catch (error) {
-    console.error("Get user error:", error)
-    res.status(500).json({ error: "Server error" })
+//     res.json(user)
+//   } catch (error) {
+//     console.error("Get user error:", error)
+//     res.status(500).json({ error: "Server error" })
+//   }
+// })
+
+// 🎯 NEW: Route to provide CSRF token to the frontend
+router.get("/csrf-token", (req, res) => {
+  // The csrfProtection middleware should have already generated a token
+  // and attached a method to retrieve it.
+  if (res.getToken) {
+    res.json({ csrfToken: res.getToken() })
+  } else {
+    // Fallback or error if token generation failed in middleware
+    console.error("CSRF token could not be generated or retrieved.")
+    res.status(500).json({ error: "Failed to generate CSRF token" })
   }
 })
 
